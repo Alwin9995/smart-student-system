@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Student Task Manager{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <!-- Loading spinner -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+
+  {% if current_user %}
+    {% set endpoint = request.endpoint or "" %}
+    <div class="mobile-overlay" id="sidebarOverlay"></div>
+
+    <!-- Sidebar navigation -->
+    <aside class="app-sidebar" id="appSidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon"><i class="bi bi-mortarboard-fill"></i></span>
+        <span>Student Task<br>Manager</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        {% if current_user.role == "admin" %}
+          <a class="sidebar-link {{ 'active' if endpoint == 'admin.dashboard' }}" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span></a>
+          <a class="sidebar-link {{ 'active' if endpoint == 'admin.teachers' }}" href="{{ url_for('admin.teachers') }}"><i class="bi bi-person-workspace"></i><span>Teachers</span></a>
+          <a class="sidebar-link {{ 'active' if endpoint == 'admin.classes' }}" href="{{ url_for('admin.classes') }}"><i class="bi bi-building"></i><span>Classes</span></a>
+          <a class="sidebar-link {{ 'active' if endpoint == 'admin.subjects' }}" href="{{ url_for('admin.subjects') }}"><i class="bi bi-journal-bookmark-fill"></i><span>Subjects</span></a>
+          <a class="sidebar-link {{ 'active' if endpoint == 'admin.calendar' }}" href="{{ url_for('admin.calendar') }}"><i class="bi bi-calendar-event"></i><span>Calendar</span></a>
+          <a class="sidebar-link {{ 'active' if endpoint == 'admin.users' }}" href="{{ url_for('admin.users') }}"><i class="bi bi-people-fill"></i><span>Users</span></a>
+        {% elif current_user.role == "teacher" %}
+          <a class="sidebar-link {{ 'active' if endpoint == 'teacher.dashboard' }}" href="{{ url_for('teacher.dashboard') }}"><i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span></a>
+          <a class="sidebar-link {{ 'active' if endpoint in ['teacher.new_assignment', 'teacher.class_detail', 'teacher.assign_subjects'] }}" href="{{ url_for('teacher.new_assignment') }}"><i class="bi bi-file-earmark-text"></i><span>Assignments</span></a>
+          <a class="sidebar-link {{ 'active' if endpoint == 'teacher.marks' }}" href="{{ url_for('teacher.marks') }}"><i class="bi bi-award-fill"></i><span>Marks</span></a>
+        {% elif current_user.role == "student" %}
+          <a class="sidebar-link {{ 'active' if endpoint == 'student.dashboard' }}" href="{{ url_for('student.dashboard') }}"><i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span></a>
+          <a class="sidebar-link" href="{{ url_for('student.dashboard') }}#assignments"><i class="bi bi-list-check"></i><span>Assignments</span></a>
+          <a class="sidebar-link" href="{{ url_for('student.dashboard') }}#marks"><i class="bi bi-award-fill"></i><span>Marks</span></a>
+          <a class="sidebar-link" href="{{ url_for('student.dashboard') }}#calendar"><i class="bi bi-calendar3"></i><span>Calendar</span></a>
+        {% endif %}
+      </nav>
+
+      <a class="sidebar-link logout-link" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i><span>Logout</span></a>
+    </aside>
+  {% endif %}
+
+  <div class="{% if current_user %}app-shell{% else %}guest-shell{% endif %}">
+    {% if current_user %}
+      <!-- Top navbar -->
+      <header class="topbar">
+        <button class="icon-btn d-lg-none" id="sidebarToggle" type="button" aria-label="Toggle sidebar">
+          <i class="bi bi-list"></i>
+        </button>
+        <div>
+          <p class="eyebrow mb-1">{{ current_user.role|title }} Portal</p>
+          <h1 class="topbar-title mb-0">{% block page_title %}Dashboard{% endblock %}</h1>
+        </div>
+        <div class="topbar-actions ms-auto">
+          {% if current_user.role == "student" %}
+            <a class="icon-btn position-relative" href="{{ url_for('student.dashboard', pending=1) }}#assignments" aria-label="View pending assignments" title="View pending assignments">
+              <i class="bi bi-bell"></i>
+              {% if pending_task_count %}
+                <span class="notification-count">{{ pending_task_count }}</span>
+              {% endif %}
+            </a>
+          {% else %}
+            <a class="icon-btn position-relative" href="{{ url_for('auth.dashboard') }}" aria-label="Notifications" title="Notifications">
+              <i class="bi bi-bell"></i>
+              <span class="notification-dot"></span>
+            </a>
+          {% endif %}
+          <button class="icon-btn" id="darkModeToggle" type="button" aria-label="Toggle dark mode">
+            <i class="bi bi-moon-stars"></i>
+          </button>
+          <div class="profile-chip">
+            <span class="avatar">{{ current_user.name[:1] }}</span>
+            <div class="profile-text">
+              <strong>{{ current_user.name }}</strong>
+              <span>{{ current_user.role|title }}</span>
+            </div>
+          </div>
+        </div>
+      </header>
+    {% endif %}
+
+    <!-- Main content -->
+    <main class="{% if current_user %}app-main{% else %}container app-main py-4{% endif %}">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
